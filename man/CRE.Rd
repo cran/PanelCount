@@ -5,9 +5,10 @@
 \title{A Model with Correlated Random Effects in Poisson and Probit Equations}
 \usage{
 CRE(sel_form, out_form, id, data = NULL, par = NULL, par_files = NULL,
-  delta = 1, sigma = 1, rho = 0, lower = c(rho = -1), upper = c(rho =
-  1), method = "L-BFGS-B", H = c(10, 10), psnH = 20, prbH = 20,
-  accu = 1e+10, verbose = 0)
+  delta = 1, max_delta = 3, sigma = 1, max_sigma = 3, rho = 0,
+  lower = c(rho = -1), upper = c(rho = 1), method = "L-BFGS-B",
+  H = c(10, 10), psnH = 20, prbH = 20, accu = 10000, reltol = 1e-08,
+  verbose = 0, tol_gtHg = Inf)
 }
 \arguments{
 \item{sel_form}{Formula for selection equation, a probit model with random effects}
@@ -24,7 +25,11 @@ CRE(sel_form, out_form, id, data = NULL, par = NULL, par_files = NULL,
 
 \item{delta}{Variance of random effects in Probit model}
 
+\item{max_delta}{Largest allowed initial delta}
+
 \item{sigma}{Variance of random effects in Poisson model}
+
+\item{max_sigma}{Largest allowed initial sigma}
 
 \item{rho}{Correlation between random effects in Probit and Poisson models}
 
@@ -40,9 +45,13 @@ CRE(sel_form, out_form, id, data = NULL, par = NULL, par_files = NULL,
 
 \item{prbH}{Number of Quddrature points for Probit RE model}
 
-\item{accu}{1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+\item{accu}{L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+
+\item{reltol}{Relative convergence tolerance. default typically 1e-8}
 
 \item{verbose}{Level of output during estimation. Lowest is 0.}
+
+\item{tol_gtHg}{tolerance on gtHg, not informative for L-BFGS-B}
 }
 \value{
 A list containing the results of the estimated model
@@ -51,10 +60,18 @@ A list containing the results of the estimated model
 Estimate a model in panel counting data, in which the selection equation is a Probit model with random effects on individuals, and the outcome equation is a Poisson model with random effects on the same individuals. The random effects on the same individual are correlated across two equations.
 }
 \examples{
+\donttest{
 data(rt)
+# Note: estimation may take 2~3 minutes
 est = CRE(isRetweet~fans+tweets+as.factor(tweet.id),
                    num.words~fans+tweets+as.factor(tweet.id),
                    id=rt$user.id, data=rt)
+}
+}
+\references{
+1. Jing Peng and Christophe Van den Bulte. Participation vs. Effectiveness of Paid Endorsers in Social Advertising Campaigns: A Field Experiment. Working Paper.
+
+2. Jing Peng and Christophe Van den Bulte. How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. In Proceedings of the 2015 International Conference on Information Systems.
 }
 \seealso{
 Other PanelCount: \code{\link{CRE_SS}};

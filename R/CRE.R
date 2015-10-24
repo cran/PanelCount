@@ -243,6 +243,8 @@ Partial_CRE = function(res,w,xnames,rule,intercept=F){
 #' @param par_files Loading initial values from saved ProbitRE and PoissonRE estimates
 #' @param delta Variance of random effects in Probit model
 #' @param sigma Variance of random effects in Poisson model
+#' @param max_delta Largest allowed initial delta
+#' @param max_sigma Largest allowed initial sigma
 #' @param rho Correlation between random effects in Probit and Poisson models
 #' @param lower Lower bound for estiamtes
 #' @param upper Upper bound for estimates
@@ -250,17 +252,24 @@ Partial_CRE = function(res,w,xnames,rule,intercept=F){
 #' @param H A vector of length 2, specifying the number of points for inner and outer Quadratures
 #' @param psnH Number of Quadrature points for Poisson RE model
 #' @param prbH Number of Quddrature points for Probit RE model
-#' @param accu 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param accu L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param reltol Relative convergence tolerance. default typically 1e-8
 #' @param verbose Level of output during estimation. Lowest is 0.
+#' @param tol_gtHg tolerance on gtHg, not informative for L-BFGS-B
 #' @return A list containing the results of the estimated model
 #' @examples
+#' \donttest{
 #' data(rt)
+#' # Note: estimation may take 2~3 minutes
 #' est = CRE(isRetweet~fans+tweets+as.factor(tweet.id),
 #'                    num.words~fans+tweets+as.factor(tweet.id),
 #'                    id=rt$user.id, data=rt)
+#' }
 #' @export
 #' @family PanelCount
-CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delta=1, sigma=1, rho=0, lower=c(rho=-1), upper=c(rho=1), method='L-BFGS-B',H=c(10,10),psnH=20,prbH=20,accu=1e10,verbose=0){
+#' @references 1. Jing Peng and Christophe Van den Bulte. Participation vs. Effectiveness of Paid Endorsers in Social Advertising Campaigns: A Field Experiment. Working Paper.
+#' @references 2. Jing Peng and Christophe Van den Bulte. How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. In Proceedings of the 2015 International Conference on Information Systems.
+CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delta=1, max_delta=3, sigma=1, max_sigma=3, rho=0, lower=c(rho=-1), upper=c(rho=1), method='L-BFGS-B',H=c(10,10),psnH=20,prbH=20,accu=1e4,reltol=1e-8,verbose=0,tol_gtHg=Inf){
     # 1.1 Sort data based on id
     ord = order(id)
     data = data[ord,]
@@ -290,9 +299,9 @@ CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delt
             par = c(sel_est[-length(sel_est)], out_est, sel_est[length(sel_est)], rho=rho)
         } else {
             writeLines("========Initializing outcome equation parameters===========")
-            psn_re = PoissonRE(out_form, id=id[!is.na(y)], data=data[!is.na(y),], sigma=sigma, H=psnH, method='BFGS',accu=accu,verbose=verbose-1)
+            psn_re = PoissonRE(out_form, id=id[!is.na(y)], data=data[!is.na(y),], sigma=sigma, max_sigma=max_sigma, H=psnH, method='BFGS',reltol=reltol,verbose=verbose-1)
             writeLines("========Initializing selection equation parameters=========")
-            probit = ProbitRE(sel_form, id=id, data=data, delta=delta, method='BFGS',H=prbH,accu=accu,verbose=verbose-1)
+            probit = ProbitRE(sel_form, id=id, data=data, delta=delta, max_delta=max_delta, method='BFGS',H=prbH,reltol=reltol,verbose=verbose-1)
             sel_est = probit$estimates[,1]
             out_est = psn_re$estimates[,1]
             par = c(sel_est[-length(sel_est)], out_est, sel_est[length(sel_est)], rho=rho)
@@ -318,17 +327,36 @@ CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delt
         }
         res = optim(par=par, fn=LL_CRE, gr=Gradient_CRE, method="L-BFGS-B", control=list(factr=accu,fnscale=-1), lower=lb, upper=ub, y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
     } else {
-        res = optim(par=par, fn=LL_CRE, gr=Gradient_CRE, method="BFGS", control=list(factr=accu,fnscale=-1), y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
+        res = optim(par=par, fn=LL_CRE, gr=Gradient_CRE, method="BFGS", control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
     }
     # 3. Likelihood, standard error, and p values
     gvar = Gradient_CRE(res$par,y,z,x,w,group,rule,variance=T,verbose=verbose-1)
     res$LL = gvar$LL
+    res$AIC = -2*res$LL + 2 * length(res$par)
+    res$BIC = -2*res$LL + log(length(z)) * length(res$par)
     res$var = gvar$var
     res$g = gvar$g
     res$gtHg = matrix(res$g, nrow=1) %*% res$var %*% matrix(res$g, ncol=1)
+    # 3.1 Check convergence
+    if(any(is.na(res$g) | !is.finite(res$g)) | res$gtHg>tol_gtHg){
+        par['rho'] = runif(1,-1,1)
+        writeLines(paste("====Failed to converge gtHg =", res$gtHg, ", trying rho =", par['rho'], ", current gradient shown below===="))
+        print(res$g)
+        return (CRE(sel_form, out_form, id, data=data, par=par, par_files=par_files, delta=delta, max_delta=max_delta, sigma=sigma, max_sigma=max_sigma, lower=lower, upper=upper, method=method,H=H,psnH=psnH,prbH=prbH,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg))
+    }
     res$se = sqrt(diag(res$var))
     res$z = res$par/res$se
     res$p = 1 - pchisq(res$z^2, 1)
+
+    # 3.2 Force hetergeneity terms to positive
+    if('delta' %in% names(res$par) && res$par['delta']<0){
+        res$par['delta'] = -res$par['delta']
+        if('rho' %in% names(res$par)) res$par['rho'] = -res$par['rho']
+    }
+    if('sigma' %in% names(res$par) && res$par['sigma']<0){
+        res$par['sigma'] = -res$par['sigma']
+        if('rho' %in% names(res$par)) res$par['rho'] = -res$par['rho']
+    }
     res$estimates = cbind(estimates=res$par,se=res$se,z=res$z,p=res$p)
     # 4. Partila Effects
     res$partial = Partial_CRE(res,w,colnames(x),rule)
@@ -336,7 +364,7 @@ CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delt
     res$partialAvgObs = Partial_CRE(res,wavg,colnames(x),rule)
     # 5. Meta data
     res$iter = tmp.env$iter
-    res$call = match.call(expand.dots = FALSE)
+    res$input = list(sel_form=sel_form, out_form=out_form, par=par, par_files=par_files, delta=delta, max_delta=max_delta, sigma=sigma, max_sigma=max_sigma, rho=rho, lower=lower, upper=upper, method=method,H=H,psnH=psnH,prbH=prbH,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg)
     writeLines(paste0("\n *** Estimation of CRE model finished, LL=",res$LL," ***"))
     print(res$estimates)
     print(Sys.time()-tmp.env$begin)
@@ -351,7 +379,7 @@ CRE = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delt
         writeLines('Error occured while computing scaled gradient, details below:')
         print(res$scgrad)
     }
-    if(verbose>=1) writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=3)))
+    writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=6)))
     rm(tmp.env)
     return (res)
 }

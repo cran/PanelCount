@@ -10,8 +10,10 @@
 #' @name PanelCount
 #' @importFrom statmod gauss.quad
 #' @importFrom Rcpp evalCpp
-#' @importFrom stats binomial dnorm dpois glm model.frame model.matrix model.response optim pchisq pnorm poisson
+#' @importFrom stats binomial dnorm dpois glm model.frame model.matrix model.response optim pchisq pnorm poisson runif
 #' @importFrom utils tail
 #' @useDynLib PanelCount
+#' @references 1. Jing Peng and Christophe Van den Bulte. Participation vs. Effectiveness of Paid Endorsers in Social Advertising Campaigns: A Field Experiment. Working Paper.
+#' @references 2. Jing Peng and Christophe Van den Bulte. How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. In Proceedings of the 2015 International Conference on Information Systems.
 NULL
 #> NULL

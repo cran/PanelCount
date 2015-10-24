@@ -97,20 +97,25 @@ Gradient_PoissonRE = function(par,y,x,group,H,variance=F,verbose=1){
 #' @param method Searching algorithm, don't change default unless you know what you are doing
 #' @param par Starting values for estimates
 #' @param sigma Variance of random effects on the individual level
+#' @param max_sigma Largest allowed initial sigma
 #' @param lower Lower bound for estiamtes
 #' @param upper Upper bound for estimates
 #' @param H A vector of length 2, specifying the number of points for inner and outer Quadratures
-#' @param accu 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param accu L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param reltol Relative convergence tolerance. default typically 1e-8
 #' @param verbose Level of output during estimation. Lowest is 0.
+#' @param tol_gtHg tolerance on gtHg, not informative for L-BFGS-B
 #' @return A list containing the results of the estimated model
 #' @examples
+#' \donttest{
 #' data(rt)
 #' est = PoissonRE(num.words~fans+tweets+as.factor(tweet.id),
 #'                      id=rt$user.id[rt$isRetweet==1],
 #'                      data=rt[rt$isRetweet==1,])
+#' }
 #' @export
 #' @family PanelCount
-PoissonRE = function(formula, id, data=NULL, par=NULL, sigma=1, method='BFGS',lower=NULL,upper=NULL,H=20,accu=1e10,verbose=0){
+PoissonRE = function(formula, id, data=NULL, par=NULL, sigma=1, max_sigma=3, method='BFGS',lower=NULL,upper=NULL,H=20,accu=10,reltol=1e-8,verbose=0,tol_gtHg=Inf){
     # 1.1 Sort data based on id
     ord = order(id)
     data = data[ord,]
@@ -132,21 +137,30 @@ PoissonRE = function(formula, id, data=NULL, par=NULL, sigma=1, method='BFGS',lo
         }
     }
     # 2. Estimation
-    # Typical values for factr are: 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy.
     tmp.env <<- new.env()
     tmp.env$iter = 1
     begin = Sys.time()
     if(method=="L-BFGS-B"){
         res = optim(par=par, fn=LL_PoissonRE, gr=Gradient_PoissonRE, method="L-BFGS-B", control=list(factr=accu,fnscale=-1), lower=lower, upper=upper, y=y, x=x, group=group, H=H, verbose=verbose)
     } else {
-        res = optim(par=par, fn=LL_PoissonRE, gr=Gradient_PoissonRE, method="BFGS", control=list(factr=accu,fnscale=-1), y=y, x=x, group=group, H=H, verbose=verbose)
+        res = optim(par=par, fn=LL_PoissonRE, gr=Gradient_PoissonRE, method="BFGS", control=list(reltol=reltol,fnscale=-1), y=y, x=x, group=group, H=H, verbose=verbose)
     }
     # 3. Likelihood, standard error, and p values
     res$LL = LL_PoissonRE(res$par,y,x,group,H,verbose=verbose-1)
+    res$AIC = -2*res$LL + 2 * length(res$par)
+    res$BIC = -2*res$LL + log(length(y)) * length(res$par)
     gvar = Gradient_PoissonRE(res$par,y,x,group,H,variance=T,verbose=verbose-1)
     res$var = gvar$var
     res$g = gvar$g
     res$gtHg = matrix(res$g, nrow=1) %*% res$var %*% matrix(res$g, ncol=1)
+    # 3.1 Check convergence
+    if(any(is.na(res$g) | !is.finite(res$g)) | res$gtHg>tol_gtHg){
+        par['sigma'] = runif(1,0,max_sigma)
+        writeLines(paste("====Failed to converge gtHg =", res$gtHg, ", trying sigma =", par['sigma'],", current gradient shown below===="))
+        print(res$g)
+        return (PoissonRE(formula, id, data=data, par=par, max_sigma=max_sigma, method=method,lower=lower,upper=upper,H=H,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg))
+    }
+
     res$se = sqrt(diag(res$var))
     res$z = res$par/res$se
     res$p = 1 - pchisq(res$z^2, 1)
@@ -165,7 +179,7 @@ PoissonRE = function(formula, id, data=NULL, par=NULL, sigma=1, method='BFGS',lo
         writeLines('Error occured while computing scaled gradient, details below:')
         print(res$scgrad)
     }
-    if(verbose>=1) writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=3)))
+    writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=6)))
     rm(tmp.env)
     return (res)
 }

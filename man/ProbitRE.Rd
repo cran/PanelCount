@@ -4,8 +4,9 @@
 \alias{ProbitRE}
 \title{A Probit Model with Random Effects}
 \usage{
-ProbitRE(formula, id, data = NULL, delta = 1, method = "BFGS",
-  lower = NULL, upper = NULL, H = 20, accu = 1e+10, verbose = 0)
+ProbitRE(formula, id, data = NULL, delta = 1, max_delta = 3,
+  method = "BFGS", lower = NULL, upper = NULL, H = 20, accu = 10,
+  reltol = 1e-08, verbose = 0, tol_gtHg = Inf)
 }
 \arguments{
 \item{formula}{Formula of the model}
@@ -16,6 +17,8 @@ ProbitRE(formula, id, data = NULL, delta = 1, method = "BFGS",
 
 \item{delta}{Variance of random effects on the individual level for ProbitRE}
 
+\item{max_delta}{Largest allowed initial delta}
+
 \item{method}{Searching algorithm, don't change default unless you know what you are doing}
 
 \item{lower}{Lower bound for estiamtes}
@@ -24,9 +27,13 @@ ProbitRE(formula, id, data = NULL, delta = 1, method = "BFGS",
 
 \item{H}{A vector of length 2, specifying the number of points for inner and outer Quadratures}
 
-\item{accu}{1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+\item{accu}{L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+
+\item{reltol}{Relative convergence tolerance. default typically 1e-8}
 
 \item{verbose}{Level of output during estimation. Lowest is 0.}
+
+\item{tol_gtHg}{tolerance on gtHg, not informative for L-BFGS-B}
 }
 \value{
 A list containing the results of the estimated model
@@ -35,9 +42,11 @@ A list containing the results of the estimated model
 Estimate a Probit model with random effects
 }
 \examples{
+\donttest{
 data(rt)
 est = ProbitRE(isRetweet~fans+tweets+as.factor(tweet.id),
                     id=rt$user.id, data=rt)
+}
 }
 \seealso{
 Other PanelCount: \code{\link{CRE_SS}}; \code{\link{CRE}};

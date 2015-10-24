@@ -4,9 +4,10 @@
 \alias{PLN_RE}
 \title{A Poisson Lognormal Model with Random Effects}
 \usage{
-PLN_RE(formula, id, data = NULL, par = NULL, gamma = 1, sigma = NULL,
-  method = "BFGS", lower = NULL, upper = NULL, H = 20, psnH = 20,
-  accu = 1e+10, verbose = 0)
+PLN_RE(formula, id, data = NULL, par = NULL, gamma = 1, max_gamma = 5,
+  sigma = 1, max_sigma = 3, method = "BFGS", lower = NULL,
+  upper = NULL, H = 20, psnH = 20, accu = 10, reltol = 1e-08,
+  verbose = 0, tol_gtHg = Inf)
 }
 \arguments{
 \item{formula}{Formula of the model}
@@ -19,7 +20,11 @@ PLN_RE(formula, id, data = NULL, par = NULL, gamma = 1, sigma = NULL,
 
 \item{gamma}{Variance of random effects on the <individual, time> level for PLN_RE}
 
+\item{max_gamma}{Largest allowed initial gamma}
+
 \item{sigma}{Variance of random effects on the individual level for PLN_RE}
+
+\item{max_sigma}{Largest allowed initial sigma}
 
 \item{method}{Searching algorithm, don't change default unless you know what you are doing}
 
@@ -31,9 +36,13 @@ PLN_RE(formula, id, data = NULL, par = NULL, gamma = 1, sigma = NULL,
 
 \item{psnH}{Number of Quadrature points for Poisson RE model}
 
-\item{accu}{1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+\item{accu}{L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+
+\item{reltol}{Relative convergence tolerance. default typically 1e-8}
 
 \item{verbose}{Level of output during estimation. Lowest is 0.}
+
+\item{tol_gtHg}{tolerance on gtHg, not informative for L-BFGS-B}
 }
 \value{
 A list containing the results of the estimated model
@@ -42,10 +51,17 @@ A list containing the results of the estimated model
 Estimate a Poisson Lognormal model with random effects in panel counting data. This model accounts for heterogeneity on the individual level, and heterogeneity on the <individual, time> level.
 }
 \examples{
+\donttest{
 data(rt)
 est = PLN_RE(num.words~fans+tweets+as.factor(tweet.id),
               id=rt$user.id[rt$isRetweet==1],
               data=rt[rt$isRetweet==1,])
+}
+}
+\references{
+1. Jing Peng and Christophe Van den Bulte. Participation vs. Effectiveness of Paid Endorsers in Social Advertising Campaigns: A Field Experiment. Working Paper.
+
+2. Jing Peng and Christophe Van den Bulte. How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. In Proceedings of the 2015 International Conference on Information Systems.
 }
 \seealso{
 Other PanelCount: \code{\link{CRE_SS}}; \code{\link{CRE}};

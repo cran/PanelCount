@@ -92,20 +92,25 @@ Gradient_ProbitRE = function(par,z,w,group,H,variance=F,verbose=1){
 #' @param data Input data, a data frame
 #' @param id A vector that represents the identity of individuals, numeric or character
 #' @param delta Variance of random effects on the individual level for ProbitRE
+#' @param max_delta Largest allowed initial delta
 #' @param method Searching algorithm, don't change default unless you know what you are doing
 #' @param lower Lower bound for estiamtes
 #' @param upper Upper bound for estimates
 #' @param H A vector of length 2, specifying the number of points for inner and outer Quadratures
-#' @param accu 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param accu L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param reltol Relative convergence tolerance. default typically 1e-8
 #' @param verbose Level of output during estimation. Lowest is 0.
+#' @param tol_gtHg tolerance on gtHg, not informative for L-BFGS-B
 #' @return A list containing the results of the estimated model
 #' @examples
+#' \donttest{
 #' data(rt)
 #' est = ProbitRE(isRetweet~fans+tweets+as.factor(tweet.id),
 #'                     id=rt$user.id, data=rt)
+#' }
 #' @export
 #' @family PanelCount
-ProbitRE = function(formula, id, data=NULL, delta=1, method='BFGS',lower=NULL,upper=NULL,H=20,accu=1e10,verbose=0){
+ProbitRE = function(formula, id, data=NULL, delta=1, max_delta=3, method='BFGS',lower=NULL,upper=NULL,H=20,accu=10,reltol=1e-8,verbose=0,tol_gtHg=Inf){
     # 1.1 Sort data based on id
     ord = order(id)
     data = data[ord,]
@@ -120,22 +125,31 @@ ProbitRE = function(formula, id, data=NULL, delta=1, method='BFGS',lower=NULL,up
     probit = summary(glm(formula, family=binomial(link='probit'), data=data))
     par = c(probit$coefficients[,1], delta=delta)
     # 2. Estimation
-    # Typical values for factr are: 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy.
     tmp.env <<- new.env()
     tmp.env$iter = 1
     begin = Sys.time()
     if(method=="L-BFGS-B"){
         res = optim(par=par, fn=LL_ProbitRE, gr=Gradient_ProbitRE, method="L-BFGS-B", control=list(factr=accu,fnscale=-1), lower=lower, upper=upper, z=z, w=w, group=group, H=H,verbose=verbose)
     } else {
-        res = optim(par=par, fn=LL_ProbitRE, gr=Gradient_ProbitRE, method="BFGS", control=list(factr=accu,fnscale=-1), z=z, w=w, group=group, H=H, verbose=verbose)
+        res = optim(par=par, fn=LL_ProbitRE, gr=Gradient_ProbitRE, method="BFGS", control=list(reltol=reltol,fnscale=-1), z=z, w=w, group=group, H=H, verbose=verbose)
     }
     # 3. Likelihood, standard error, and p values
     res$LL = LL_ProbitRE(res$par,z,w,group,H,verbose=verbose-1)
+    res$AIC = -2*res$LL + 2 * length(res$par)
+    res$BIC = -2*res$LL + log(length(z)) * length(res$par)
+
     gvar = Gradient_ProbitRE(res$par,z,w,group,H,variance=T,verbose=verbose-1)
     res$var = gvar$var
     res$g = gvar$g
-    # The precision of gH^-1g is very sensitive to H^-1 (var)
+    # The precision of gtHg is very sensitive to H^-1 (var)
     res$gtHg = matrix(res$g, nrow=1) %*% res$var %*% matrix(res$g, ncol=1)
+    # 3.1 Check convergence
+    if(any(is.na(res$g) | !is.finite(res$g)) | res$gtHg>tol_gtHg){
+        new_delta = runif(1,0,max_delta)
+        writeLines(paste("====Failed to converge gtHg =", res$gtHg, ", trying delta =", new_delta,", current gradient shown below===="))
+        print(res$g)
+        return(ProbitRE(formula, id, data=data, delta=new_delta, max_delta=max_delta, method=method,lower=lower,upper=upper,H=H,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg))
+    }
     res$se = sqrt(diag(res$var))
     res$z = res$par/res$se
     res$p = 1 - pchisq(res$z^2, 1)
@@ -154,7 +168,7 @@ ProbitRE = function(formula, id, data=NULL, delta=1, method='BFGS',lower=NULL,up
         writeLines('Error occured while computing scaled gradient, details below:')
         print(res$scgrad)
     }
-    if(verbose>=1) writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=3)))
+    writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=6)))
     rm(tmp.env)
     return (res)
 }

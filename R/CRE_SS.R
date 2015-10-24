@@ -177,8 +177,8 @@ Partial_CRE_SS = function(res,w,xnames,rule,intercept=F){
     delta = par["delta"]
     sigma = par["sigma"]
     gamma = par["gamma"]
-    rho = par["rho"]
-    tau = par["tau"]
+    rho = ifelse("rho" %in% names(par), par["rho"], 0)
+    tau = ifelse("tau" %in% names(par), par["tau"], 0)
 
     com = xnames[xnames %in% wnames & xnames!="(Intercept)"]
     if(intercept){ # no effect on other variables
@@ -259,8 +259,9 @@ Partial_CRE_SS = function(res,w,xnames,rule,intercept=F){
     rownames(J) = c(com, wunq, xunq)
     colnames(J) = c(wnames,xnames,"delta","sigma","gamma","rho","tau")
 
-    # rearrange to allign with covariance matrix
-    J = cbind(J[,1:(ncol(J)-5)], J[, tail(names(par), 5)])
+    # rearrange to allign with covariance matrix, remove missing structural parameters
+    plain_par = length(wnames) + length(xnames)
+    J = cbind(J[,1:plain_par], J[, tail(names(par), length(par)-plain_par)])
     se = sqrt(diag(J %*% res$var %*% t(J)))
     z = G/se
     p = 1 - pchisq(z^2, 1)
@@ -317,11 +318,15 @@ predict_CRE_SS = function(par,y,z,x,w,group,rule){
 #' @param data Input data, a data frame
 #' @param id A vector that represents the identity of individuals, numeric or character
 #' @param par Starting values for estimates
+#' @param killed_par correlation parameters to swtich off
 #' @param par_files Loading initial values from saved ProbitRE and PoissonRE estimates
 #' @param delta Variance of random effects on the individual level for ProbitRE
 #' @param sigma Variance of random effects on the individual level for PLN_RE
 #' @param gamma Variance of random effects on the <individual, time> level for PLN_RE
 #' @param rho Correlation between random effects on the individual level
+#' @param max_delta Largest allowed initial delta
+#' @param max_sigma Largest allowed initial sigma
+#' @param max_gamma Largest allowed initial gamma
 #' @param tau Correlation between error terms on the <individual, time> level
 #' @param lower Lower bound for estiamtes
 #' @param upper Upper bound for estimates
@@ -330,19 +335,24 @@ predict_CRE_SS = function(par,y,z,x,w,group,rule){
 #' @param psnH Number of Quadrature points for Poisson RE model
 #' @param prbH Number of Quddrature points for Probit RE model
 #' @param plnreH Number of Quddrature points for PLN_RE model
-#' @param accu 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param accu L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim
+#' @param reltol Relative convergence tolerance. default typically 1e-8
 #' @param verbose Level of output during estimation. Lowest is 0.
+#' @param tol_gtHg tolerance on gtHg, not informative for L-BFGS-B
 #' @return A list containing the results of the estimated model
 #' @examples
 #' \donttest{
 #' data(rt)
+#' # Note: estimation may take up 10~15 minutes
 #' est = CRE_SS(isRetweet~fans+tweets+as.factor(tweet.id),
 #'                        num.words~fans+tweets+as.factor(tweet.id),
 #'                        id=rt$user.id, data=rt)
 #' }
 #' @export
 #' @family PanelCount
-CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, delta=1, sigma=1, gamma=1, rho=0, tau=0, lower=c(rho=-1, tau=-1), upper=c(rho=1, tau=1), method='L-BFGS-B',H=c(10,10),psnH=20,prbH=20,plnreH=20,accu=1e10,verbose=0){
+#' @references 1. Jing Peng and Christophe Van den Bulte. Participation vs. Effectiveness of Paid Endorsers in Social Advertising Campaigns: A Field Experiment. Working Paper.
+#' @references 2. Jing Peng and Christophe Van den Bulte. How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. In Proceedings of the 2015 International Conference on Information Systems.
+CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, killed_par=NULL, par_files=NULL, delta=1, sigma=1, gamma=1,max_delta=3,max_sigma=3,max_gamma=5, rho=0, tau=0, lower=c(rho=-1, tau=-1), upper=c(rho=1, tau=1), method='L-BFGS-B',H=c(10,10),psnH=20,prbH=20,plnreH=20,accu=1e4,reltol=sqrt(.Machine$double.eps),verbose=0,tol_gtHg=Inf){
     # 1.1 Sort data based on id
     ord = order(id)
     data = data[ord,]
@@ -372,16 +382,16 @@ CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, d
             par = c(sel_est[-length(sel_est)], out_est, sel_est[length(sel_est)], rho=rho,tau=tau)
         } else {
             writeLines("=========Initializing outcome equation parameters===========")
-            pln_re = PLN_RE(out_form, id=id[!is.na(y)], data=data[!is.na(y),], gamma=gamma, sigma=sigma, psnH=psnH, method='BFGS',H=plnreH,accu=accu,verbose=verbose-1)
+            pln_re = PLN_RE(out_form, id=id[!is.na(y)], data=data[!is.na(y),], gamma=gamma, max_gamma=max_gamma, sigma=sigma, max_sigma=max_sigma, psnH=psnH, method='BFGS',H=plnreH,reltol=reltol,verbose=verbose-1)
             writeLines("=========Initializing selection equation parameters=========")
-            probit = ProbitRE(sel_form, id=id, data=data, delta=delta, method='BFGS',H=prbH,accu=accu,verbose=verbose-1)
+            probit = ProbitRE(sel_form, id=id, data=data, delta=delta, max_delta=max_delta, method='BFGS',H=prbH,reltol=reltol,verbose=verbose-1)
             sel_est = probit$estimates[,1]
             out_est = pln_re$estimates[,1]
             par = c(sel_est[-length(sel_est)], out_est, sel_est[length(sel_est)], rho=rho,tau=tau)
         }
     }
+    par = par[!names(par) %in% killed_par]
     # 2. Estimation
-    # Typical values for factr are: 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy.
     tmp.env <<- new.env()
     tmp.env$iter = 1
     tmp.env$initLL = -Inf
@@ -391,6 +401,8 @@ CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, d
         names(lb) = names(par)
         ub = rep(Inf, length(par))
         names(ub) = names(par)
+        lower = lower[names(lower) %in% names(par)]
+        upper = upper[names(upper) %in% names(par)]
         lb[match(names(lower), names(lb))] = lower
         ub[match(names(upper), names(ub))] = upper
         if(verbose>=2){
@@ -401,25 +413,52 @@ CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, d
         }
         res = optim(par=par, fn=LL_CRE_SS, gr=Gradient_CRE_SS, method="L-BFGS-B", control=list(factr=accu,fnscale=-1), lower=lb, upper=ub, y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
     } else {
-        res = optim(par=par, fn=LL_CRE_SS, gr=Gradient_CRE_SS, method="BFGS", control=list(factr=accu,fnscale=-1), y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
+        res = optim(par=par, fn=LL_CRE_SS, gr=Gradient_CRE_SS, method="BFGS", control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group,rule=rule,verbose=verbose)
     }
+
     # 3. Likelihood, standard error, and p values
     gvar = Gradient_CRE_SS(res$par,y,z,x,w,group,rule,T,verbose=verbose-1)
     res$LL = gvar$LL
+    res$AIC = -2*res$LL + 2 * length(res$par)
+    res$BIC = -2*res$LL + log(length(z)) * length(res$par)
     res$var = gvar$var
     res$g = gvar$g
     res$gtHg = matrix(res$g, nrow=1) %*% res$var %*% matrix(res$g, ncol=1)
+    # 3.1 Check convergence
+    if(any(is.na(res$g) | !is.finite(res$g)) | res$gtHg>tol_gtHg){
+        if('rho' %in% names(par)) par['rho'] = runif(1,-1,1)
+        if('tau' %in% names(par)) par['tau'] = runif(1,-1,1)
+        writeLines(paste("====Failed to converge gtHg =", res$gtHg, ", trying rho =", par['rho'], ", tau =", par['tau'],", current gradient shown below===="))
+        print(res$g)
+        return (CRE_SS(sel_form, out_form, id, data=data, par=par, par_files=par_files, delta=delta, sigma=sigma, gamma=gamma,max_delta=max_delta,max_sigma=max_sigma,max_gamma=max_gamma, lower=lower, upper=upper, method=method,H=H,psnH=psnH,prbH=prbH,plnreH=plnreH,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg))
+    }
     res$se = sqrt(diag(res$var))
     res$z = res$par/res$se
     res$p = 1 - pchisq(res$z^2, 1)
+
+    # 3.2 Force hetergeneity terms to positive
+    if('gamma' %in% names(res$par) && res$par['gamma']<0){
+        res$par['gamma'] = -res$par['gamma']
+        if('tau' %in% names(res$par)) res$par['tau'] = -res$par['tau']
+    }
+    if('delta' %in% names(res$par) && res$par['delta']<0){
+        res$par['delta'] = -res$par['delta']
+        if('rho' %in% names(res$par)) res$par['rho'] = -res$par['rho']
+    }
+    if('sigma' %in% names(res$par) && res$par['sigma']<0){
+        res$par['sigma'] = -res$par['sigma']
+        if('rho' %in% names(res$par)) res$par['rho'] = -res$par['rho']
+    }
     res$estimates = cbind(estimates=res$par,se=res$se,z=res$z,p=res$p)
     # 4. Partila Effects
     res$partial = Partial_CRE_SS(res,w,colnames(x),rule)
     wavg = t(colMeans(w)) # convert vector to matrix with a single row (names kept)
     res$partialAvgObs = Partial_CRE_SS(res,wavg,colnames(x),rule)
+    writeLines("---Now working on predictions---")
+    res$predict = predict_CRE_SS(res$par,y,z,x,w,group,rule)
     # 5. Meta data
     res$iter = tmp.env$iter
-    res$call = match.call(expand.dots = FALSE)
+    res$input = list(sel_form=sel_form, out_form=out_form, par=par, killed_par=killed_par, par_files=par_files, delta=delta, sigma=sigma, gamma=gamma,max_delta=max_delta,max_sigma=max_sigma,max_gamma=max_gamma, rho=rho, tau=tau, lower=lower, upper=upper, method=method,H=H,psnH=psnH,prbH=prbH,plnreH=plnreH,accu=accu,reltol=reltol,verbose=verbose,tol_gtHg=tol_gtHg)
     writeLines(paste0("\n *** Estimation of CRE_SS model finished, LL=",res$LL," ***"))
     print(res$estimates)
     print(Sys.time()-tmp.env$begin)
@@ -434,7 +473,7 @@ CRE_SS = function(sel_form, out_form, id, data=NULL, par=NULL, par_files=NULL, d
         writeLines('Error occured while computing scaled gradient, details below:')
         print(res$scgrad)
     }
-    if(verbose>=1) writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=3)))
+    writeLines(paste0('Convergence criterion gtHg: ', round(res$gtHg, digits=6)))
     rm(tmp.env)
     return (res)
 }

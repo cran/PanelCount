@@ -5,8 +5,8 @@
 \title{A Poisson Model with Random Effects}
 \usage{
 PoissonRE(formula, id, data = NULL, par = NULL, sigma = 1,
-  method = "BFGS", lower = NULL, upper = NULL, H = 20, accu = 1e+10,
-  verbose = 0)
+  max_sigma = 3, method = "BFGS", lower = NULL, upper = NULL, H = 20,
+  accu = 10, reltol = 1e-08, verbose = 0, tol_gtHg = Inf)
 }
 \arguments{
 \item{formula}{Formula of the model}
@@ -19,6 +19,8 @@ PoissonRE(formula, id, data = NULL, par = NULL, sigma = 1,
 
 \item{sigma}{Variance of random effects on the individual level}
 
+\item{max_sigma}{Largest allowed initial sigma}
+
 \item{method}{Searching algorithm, don't change default unless you know what you are doing}
 
 \item{lower}{Lower bound for estiamtes}
@@ -27,9 +29,13 @@ PoissonRE(formula, id, data = NULL, par = NULL, sigma = 1,
 
 \item{H}{A vector of length 2, specifying the number of points for inner and outer Quadratures}
 
-\item{accu}{1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+\item{accu}{L-BFGS-B only, 1e12 for low accuracy; 1e7 for moderate accuracy; 10.0 for extremely high accuracy. See optim}
+
+\item{reltol}{Relative convergence tolerance. default typically 1e-8}
 
 \item{verbose}{Level of output during estimation. Lowest is 0.}
+
+\item{tol_gtHg}{tolerance on gtHg, not informative for L-BFGS-B}
 }
 \value{
 A list containing the results of the estimated model
@@ -38,10 +44,12 @@ A list containing the results of the estimated model
 Estimate a Poisson model with random effects in panel counting data. Note this model is different with the Poisson Lognormal model for counting data.
 }
 \examples{
+\donttest{
 data(rt)
 est = PoissonRE(num.words~fans+tweets+as.factor(tweet.id),
                      id=rt$user.id[rt$isRetweet==1],
                      data=rt[rt$isRetweet==1,])
+}
 }
 \seealso{
 Other PanelCount: \code{\link{CRE_SS}}; \code{\link{CRE}};

@@ -4,7 +4,7 @@
 \name{rt}
 \alias{rt}
 \title{Number of words in quoted retweets}
-\format{A data frame 1336 rows and 6 columns
+\format{A data frame 13410 rows and 6 columns
 \describe{
   \item{tweet.id}{The id of a status posted on microblog}
   \item{user.id}{The id of a user on microblog}
@@ -20,7 +20,7 @@ collected by the author of the package on microblog
 rt
 }
 \description{
-A anonymized dataset containing the retweeting activities of 334 microblog users on 4 tweets
+A anonymized dataset containing the retweeting activities of 894 microblog users on 15 tweets
 }
 \keyword{datasets}
 

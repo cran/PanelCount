@@ -52,4 +52,23 @@ NumericMatrix groupProd(NumericVector v, NumericVector group){
     return wrap(z);
 }
 
+// [[Rcpp::export]]
+NumericMatrix groupSum(NumericVector v, NumericVector group){
+    vec V = as<vec>(v);
+    ivec G = as<ivec>(group);
+    uword nGroup = G.n_elem - 1;
+    vec z = zeros<vec> (nGroup);
+    for(uword i=0; i< nGroup; i++) z[i] = sum(V.subvec(G[i], G[i+1]-1));
+    return wrap(z);
+}
 
+
+// [[Rcpp::export]]
+NumericMatrix groupSumMat(NumericMatrix m, NumericVector group){
+    mat M = as<mat>(m);
+    ivec G = as<ivec>(group);
+    uword nGroup = G.n_elem - 1;
+    mat z = zeros<mat>(nGroup, M.n_cols);
+    for(uword i=0; i< nGroup; i++) z.row(i) = sum(M.rows(G[i], G[i+1]-1), 0);
+    return wrap(z);
+}

@@ -1,0 +1,233 @@
+---
+title: "Panel Count Models with Random Effects and Sample Selection"
+author:
+- name: Jing Peng
+  affiliation: School of Business, University of Connecticut
+  email: jing.peng@uconn.edu
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+link-citations: true
+vignette: >
+  %\VignetteIndexEntry{Panel Count Models with Random Effects and Sample Selection}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## 1. Introduction
+
+Panel count data are ubiquitous, such as the sales of products month by month and the views of videos day by day. There are two common issues with modeling panel count data:
+
+1.  *Repeated observations*. The observations on the same individuals are unlikely to be independent because of individual level unobserved effects.
+2.  *Sample selection*. The counts are often only observed for a selective sample of individuals. For example, our data may only include a subset of products or videos that are not randomly selected from the population.
+
+The *PanelCount* package implements multiple models to address both issues. Specifically, it supports the estimation of the following models:
+
+-   **PoissonRE**: Poisson model with individual level random effects
+-   **PLN_RE**: Poisson log-normal model with individual level random effects. That is, a Poisson model with random effects at both the individual and individual-time levels
+-   **ProbitRE**: Probit model with individual level random effects
+-   **ProbitRE_PoissonRE**: ProbitRE and PoissonRE models with correlated individual level random effects
+-   **ProbitRE_PLNRE**: ProbitRE and PLN_RE models with correlated individual level random effects and correlated individual-time level error terms
+
+## 2. Models
+
+### 2.1. PoissonRE: Poisson model with individual level Random Effects
+
+Let $i$ and $t$ index individual and time, respectively. The conditional mean of the PoissonRE model is specified as follows:
+
+$$E[y_{it}|x_{it},v_i] = exp(\boldsymbol{\beta}\mathbf{x_{it}}' + \sigma v_i)$$
+
+where $x_{it}$ represents the set of covariates influencing the outcome $y_{it}$, and $v_i$ denotes the individual level random effects and is assumed to follow the standard normal distribution. $\sigma^2$ represents the variance of the random effect.
+
+### 2.2. PLN_RE: Poisson LogNormal model with individual level Random Effects
+
+The conditional mean of the PLN_RE model is specified as follows:
+
+$$E[y_{it}|x_{it},v_i,\epsilon_{it}] = exp( \boldsymbol{\beta}\mathbf{x_{it}}' + \sigma v_i + \gamma \epsilon_{it})$$
+
+where $v_i$ represents individual random effects and $\epsilon_{it}$ represents individual-time level random effects. Both are assumed to follow a standard normal distribution. $\sigma^2$ and $\gamma^2$ represent the variances of the individual and individual-time level random effects, respectively.
+
+### 2.3. ProbitRE: Probit model with individual level Random Effects
+
+The specification of the ProbitRE model is given by$$z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}'+\delta u_i+\xi_{it} > 0)$$
+
+where $w_{it}$ represents the set of covariates influencing individual $i$'s decision in period $t$, and where $u_i$ represents the individual level random effect following the standard normal distribution, with the variance of the random effect captured by $\delta^2$. The variance of the individual-time level random shock $\xi_{it}$ is normalized to 1 to ensure unique identification.
+
+### 2.4. ProbitRE_PoissonRE
+
+This model estimates the following selection and outcome equations jontly, allowing the random effects at the individual level to be correlated.
+
+Selection Equation (ProbitRE): $$z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}'+\delta u_i+\xi_{it} > 0)$$
+
+Outcome Equation (PoissonRE): $$E[y_{it}|x_{it},v_i] = exp(\boldsymbol{\beta}\mathbf{x_{it}}' + \sigma v_i)$$
+
+Sample Selection at individual level: $$\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 & \rho \\
+\rho & 1
+\end{pmatrix}\right).
+$$
+
+### 2.5. ProbitRE_PLNRE
+
+This model estimates the following selection and outcome equations jontly, allowing the random effects (or error terms) at both the individual and individual-time level to be respectively correlated.
+
+Selection Equation (ProbitRE): $$z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}'+\delta u_i+\xi_{it} > 0)$$
+
+Outcome Equation (PLN_RE): $$E[y_{it}|x_{it},v_i,\epsilon_{it}] = exp(\boldsymbol{\beta}\mathbf{x_{it}}' + \sigma v_i + \gamma \epsilon_{it})$$
+
+Sample Selection at individual level: $$\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 & \rho \\
+\rho & 1
+\end{pmatrix}\right).
+$$
+
+Sample Selection at individual-time level: $$\begin{pmatrix}
+\xi_{it} \\
+\epsilon_{it}
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 & \tau \\
+\tau & 1
+\end{pmatrix}\right).
+$$
+
+## 3. Examples
+
+We begin with simulating a dataset with 200 invidiuals and 10 periods using the following data generating process (DGP):
+
+$$z_{it}=1(1+x_{it}+w_{it}+u_i+\xi_{it} > 0)$$
+
+$$E[y_{it}|x_{it},v_i,\epsilon_{it}] = exp(-1+x_{it} + v_i + \epsilon_{it})$$
+
+$$\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 & 0.25 \\
+0.25 & 1
+\end{pmatrix}\right).
+$$
+
+$$\begin{pmatrix}
+\xi_{it} \\
+\epsilon_{it}
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 & 0.5 \\
+0.5 & 1
+\end{pmatrix}\right).
+$$
+
+```{r}
+library(MASS)
+library(PanelCount)
+set.seed(1)
+N = 200
+periods = 10
+rho = 0.25
+tau = 0.5
+
+id = rep(1:N, each=periods)
+time = rep(1:periods, N)
+x = rnorm(N*periods)
+w = rnorm(N*periods)
+
+# correlated random effects at the individual level
+r = mvrnorm(N, mu=c(0,0), Sigma=matrix(c(1,rho,rho,1), nrow=2))
+r1 = rep(r[,1], each=periods)
+r2 = rep(r[,2], each=periods)
+
+# correlated error terms at the individual-time level
+e = mvrnorm(N*periods, mu=c(0,0), Sigma=matrix(c(1,tau,tau,1), nrow=2))
+e1 = e[,1]
+e2 = e[,2]
+
+# selection
+z = as.numeric(1+x+w+r1+e1>0)
+# outcome
+y = rpois(N*periods, exp(-1+x+r2+e2))
+y[z==0] = NA
+sim = data.frame(id,time,x,w,z,y)
+head(sim)
+```
+
+Next, we estimate the true parameters in the above DGP using various models. In particular, we examine whether we can recover the true value of x's coefficient in the second stage.
+
+### 3.1. PoissonRE
+
+```{r}
+m1 = PoissonRE(y~x, data=sim[!is.na(sim$y), ], id.name='id', verbose=-1)
+round(m1$estimates, digits=3)
+```
+
+The estimate of x is biased because the above model fails to consider the individual-time level fixed effects and the sample selection issue in the true DGP.
+
+### 3.2. PLN_RE
+
+```{r}
+m2 = PLN_RE(y~x, data=sim[!is.na(sim$y), ], id.name='id', verbose=-1)
+round(m2$estimates, digits=3)
+```
+
+The estimate of x is still biased because the above model fails to consider the sample selection issue in the true DGP.
+
+### 3.3. ProbitRE
+
+```{r}
+m3 = ProbitRE(z~x+w, data=sim, id.name='id', verbose=-1)
+round(m3$estimates, digits=3)
+```
+
+The specification of this model is consistent with the DGP of the first stage. Therefore, it can produce consistent estimates of the parameters in the first stage.
+
+### 3.4. ProbitRE_PoissonRE
+
+```{r}
+m4 = ProbitRE_PoissonRE(z~x+w, y~x, data=sim, id.name='id', verbose=-1)
+round(m4$estimates, digits=3)
+```
+
+The results above the second "(Intercept)" are for the first stage. After accounting for self-selection at the individual level, the estimate of x in the second stage is still biased because the true DGP also includes self-selection at the individual-time level.
+
+### 3.5. ProbitRE_PLNRE
+
+```{r}
+# The estimation may take up to 1 minute
+m5 = ProbitRE_PLNRE(z~x+w, y~x, data=sim, id.name='id', verbose=-1)
+round(m5$estimates, digits=3)
+```
+
+The results above the second "(Intercept)" are for the first stage. The specification of this model is consistent with the true DGP and hence the estimate of x is very close to its true value 1.
+
+The estimation of ProbitRE_PoissonRE and ProbitRE_PLNRE does not require a variable like w that exclusively influences the first-stage outcome, but the identification is stronger with such a variable.
+
+## Citations
+
+Peng, J., & Van den Bulte, C. (2022). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Available at SSRN: <https://www.ssrn.com/abstract=2702053>
+
+Peng, J., & Van Den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. *2015 International Conference on Information Systems*. <https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/>

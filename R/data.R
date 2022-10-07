@@ -1,15 +1,22 @@
-#' Number of words in quoted retweets
+#' Simulated dataset with self-selection at both individual and individual-time level
 #'
-#' A anonymized dataset containing the retweeting activities of 894 microblog users on 15 tweets
+#' A simulated dataset with 200 individuals and 10 periods. The true data generating process is the following: \cr\cr
+#' Selection equation (ProbitRE - Probit model with individual level random effects):
+#' \deqn{z_{it}=1(1+x_{it}+w_{it}+u_i+\xi_{it} > 0}{z_it=1(1+x_it+w_it+u_i+\xi_it > 0)}
+#' Outcome Equation (PLN_RE - Poisson Lognormal model with individual-time level random effects):
+#' \deqn{E[y_{it}|x_{it},v_i,\epsilon_{it}] = exp(-1+x_{it} + v_i + \epsilon_{it})}{E[y_it|x_it,v_i,\epsilon_it] = exp(-1+x_it + v_i + \epsilon_it)}
+#' Correlation (self-selection at both individual and individual-time level):
+#' * \eqn{u_i} and \eqn{v_i} are bivariate normally distributed with a correlation of 0.25.
+#' * \eqn{\xi_{it}}{\xi_it} and \eqn{\epsilon_{it}}{\epsilon_it} are bivariate normally distributed with a correlation of 0.5.
+#' @md
 #'
-#' @format A data frame 13410 rows and 6 columns
+#' @format A simulated dataset with 200 individuals and 10 periods.
 #' \describe{
-#'   \item{tweet.id}{The id of a status posted on microblog}
-#'   \item{user.id}{The id of a user on microblog}
-#'   \item{fans}{The number of fans of the user, on the log scale}
-#'   \item{tweets}{The number of tweets of the user, on the log scale}
-#'   \item{isRetweet}{Whether the user retweets the given tweet, boolean}
-#'   \item{num.words}{Number of words attached while retweeting. NA if doesn't retweet}
+#'   \item{id}{id, from 1-200}
+#'   \item{time}{Time periods, from 1-10}
+#'   \item{z}{Whether an individual is selected in a given period. Outcome is observed only when z=1}
+#'   \item{y}{The outcome of an individual in a given period}
+#'   \item{x}{A covariate influencing both z and y, with true effects being 1}
+#'   \item{w}{A covariate influencing only z, with true effect being 1}
 #' }
-#' @source collected by the author of the package on microblog
-"rt"
+"sim"

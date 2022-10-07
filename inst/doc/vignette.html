@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+<meta name="date" content="2022-10-06" />
+
+<title>Panel Count Models with Random Effects and Sample Selection</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Panel Count Models with Random Effects and
+Sample Selection</h1>
+<h4 class="author">Jing Peng</h4>
+<address class="author_afil">
+School of Business, University of
+Connecticut<br><a class="author_email" href="mailto:#"><a href="mailto:jing.peng@uconn.edu" class="email">jing.peng@uconn.edu</a></a>
+</address>
+<h4 class="date">2022-10-06</h4>
+
+
+
+<div id="introduction" class="section level2">
+<h2>1. Introduction</h2>
+<p>Panel count data are ubiquitous, such as the sales of products month
+by month and the views of videos day by day. There are two common issues
+with modeling panel count data:</p>
+<ol style="list-style-type: decimal">
+<li><em>Repeated observations</em>. The observations on the same
+individuals are unlikely to be independent because of individual level
+unobserved effects.</li>
+<li><em>Sample selection</em>. The counts are often only observed for a
+selective sample of individuals. For example, our data may only include
+a subset of products or videos that are not randomly selected from the
+population.</li>
+</ol>
+<p>The <em>PanelCount</em> package implements multiple models to address
+both issues. Specifically, it supports the estimation of the following
+models:</p>
+<ul>
+<li><strong>PoissonRE</strong>: Poisson model with individual level
+random effects</li>
+<li><strong>PLN_RE</strong>: Poisson log-normal model with individual
+level random effects. That is, a Poisson model with random effects at
+both the individual and individual-time levels</li>
+<li><strong>ProbitRE</strong>: Probit model with individual level random
+effects</li>
+<li><strong>ProbitRE_PoissonRE</strong>: ProbitRE and PoissonRE models
+with correlated individual level random effects</li>
+<li><strong>ProbitRE_PLNRE</strong>: ProbitRE and PLN_RE models with
+correlated individual level random effects and correlated
+individual-time level error terms</li>
+</ul>
+</div>
+<div id="models" class="section level2">
+<h2>2. Models</h2>
+<div id="poissonre-poisson-model-with-individual-level-random-effects" class="section level3">
+<h3>2.1. PoissonRE: Poisson model with individual level Random
+Effects</h3>
+<p>Let <span class="math inline">\(i\)</span> and <span class="math inline">\(t\)</span> index individual and time,
+respectively. The conditional mean of the PoissonRE model is specified
+as follows:</p>
+<p><span class="math display">\[E[y_{it}|x_{it},v_i] =
+exp(\boldsymbol{\beta}\mathbf{x_{it}}&#39; + \sigma v_i)\]</span></p>
+<p>where <span class="math inline">\(x_{it}\)</span> represents the set
+of covariates influencing the outcome <span class="math inline">\(y_{it}\)</span>, and <span class="math inline">\(v_i\)</span> denotes the individual level random
+effects and is assumed to follow the standard normal distribution. <span class="math inline">\(\sigma^2\)</span> represents the variance of the
+random effect.</p>
+</div>
+<div id="pln_re-poisson-lognormal-model-with-individual-level-random-effects" class="section level3">
+<h3>2.2. PLN_RE: Poisson LogNormal model with individual level Random
+Effects</h3>
+<p>The conditional mean of the PLN_RE model is specified as follows:</p>
+<p><span class="math display">\[E[y_{it}|x_{it},v_i,\epsilon_{it}] =
+exp( \boldsymbol{\beta}\mathbf{x_{it}}&#39; + \sigma v_i + \gamma
+\epsilon_{it})\]</span></p>
+<p>where <span class="math inline">\(v_i\)</span> represents individual
+random effects and <span class="math inline">\(\epsilon_{it}\)</span>
+represents individual-time level random effects. Both are assumed to
+follow a standard normal distribution. <span class="math inline">\(\sigma^2\)</span> and <span class="math inline">\(\gamma^2\)</span> represent the variances of the
+individual and individual-time level random effects, respectively.</p>
+</div>
+<div id="probitre-probit-model-with-individual-level-random-effects" class="section level3">
+<h3>2.3. ProbitRE: Probit model with individual level Random
+Effects</h3>
+<p>The specification of the ProbitRE model is given by<span class="math display">\[z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}&#39;+\delta
+u_i+\xi_{it} &gt; 0)\]</span></p>
+<p>where <span class="math inline">\(w_{it}\)</span> represents the set
+of covariates influencing individual <span class="math inline">\(i\)</span>’s decision in period <span class="math inline">\(t\)</span>, and where <span class="math inline">\(u_i\)</span> represents the individual level
+random effect following the standard normal distribution, with the
+variance of the random effect captured by <span class="math inline">\(\delta^2\)</span>. The variance of the
+individual-time level random shock <span class="math inline">\(\xi_{it}\)</span> is normalized to 1 to ensure
+unique identification.</p>
+</div>
+<div id="probitre_poissonre" class="section level3">
+<h3>2.4. ProbitRE_PoissonRE</h3>
+<p>This model estimates the following selection and outcome equations
+jontly, allowing the random effects at the individual level to be
+correlated.</p>
+<p>Selection Equation (ProbitRE): <span class="math display">\[z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}&#39;+\delta
+u_i+\xi_{it} &gt; 0)\]</span></p>
+<p>Outcome Equation (PoissonRE): <span class="math display">\[E[y_{it}|x_{it},v_i] =
+exp(\boldsymbol{\beta}\mathbf{x_{it}}&#39; + \sigma v_i)\]</span></p>
+<p>Sample Selection at individual level: <span class="math display">\[\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 &amp; \rho \\
+\rho &amp; 1
+\end{pmatrix}\right).
+\]</span></p>
+</div>
+<div id="probitre_plnre" class="section level3">
+<h3>2.5. ProbitRE_PLNRE</h3>
+<p>This model estimates the following selection and outcome equations
+jontly, allowing the random effects (or error terms) at both the
+individual and individual-time level to be respectively correlated.</p>
+<p>Selection Equation (ProbitRE): <span class="math display">\[z_{it}=1(\boldsymbol{\alpha}\mathbf{w_{it}}&#39;+\delta
+u_i+\xi_{it} &gt; 0)\]</span></p>
+<p>Outcome Equation (PLN_RE): <span class="math display">\[E[y_{it}|x_{it},v_i,\epsilon_{it}] =
+exp(\boldsymbol{\beta}\mathbf{x_{it}}&#39; + \sigma v_i + \gamma
+\epsilon_{it})\]</span></p>
+<p>Sample Selection at individual level: <span class="math display">\[\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 &amp; \rho \\
+\rho &amp; 1
+\end{pmatrix}\right).
+\]</span></p>
+<p>Sample Selection at individual-time level: <span class="math display">\[\begin{pmatrix}
+\xi_{it} \\
+\epsilon_{it}
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 &amp; \tau \\
+\tau &amp; 1
+\end{pmatrix}\right).
+\]</span></p>
+</div>
+</div>
+<div id="examples" class="section level2">
+<h2>3. Examples</h2>
+<p>We begin with simulating a dataset with 200 invidiuals and 10 periods
+using the following data generating process (DGP):</p>
+<p><span class="math display">\[z_{it}=1(1+x_{it}+w_{it}+u_i+\xi_{it}
+&gt; 0)\]</span></p>
+<p><span class="math display">\[E[y_{it}|x_{it},v_i,\epsilon_{it}] =
+exp(-1+x_{it} + v_i + \epsilon_{it})\]</span></p>
+<p><span class="math display">\[\begin{pmatrix}
+u_i \\
+v_i
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 &amp; 0.25 \\
+0.25 &amp; 1
+\end{pmatrix}\right).
+\]</span></p>
+<p><span class="math display">\[\begin{pmatrix}
+\xi_{it} \\
+\epsilon_{it}
+\end{pmatrix}\sim N\left(\begin{pmatrix}
+0 \\
+0
+\end{pmatrix},\begin{pmatrix}
+1 &amp; 0.5 \\
+0.5 &amp; 1
+\end{pmatrix}\right).
+\]</span></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(PanelCount)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>N <span class="ot">=</span> <span class="dv">200</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>periods <span class="ot">=</span> <span class="dv">10</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>rho <span class="ot">=</span> <span class="fl">0.25</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>tau <span class="ot">=</span> <span class="fl">0.5</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>id <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>N, <span class="at">each=</span>periods)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>time <span class="ot">=</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>periods, N)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>x <span class="ot">=</span> <span class="fu">rnorm</span>(N<span class="sc">*</span>periods)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>w <span class="ot">=</span> <span class="fu">rnorm</span>(N<span class="sc">*</span>periods)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co"># correlated random effects at the individual level</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>r <span class="ot">=</span> <span class="fu">mvrnorm</span>(N, <span class="at">mu=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">Sigma=</span><span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>,rho,rho,<span class="dv">1</span>), <span class="at">nrow=</span><span class="dv">2</span>))</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>r1 <span class="ot">=</span> <span class="fu">rep</span>(r[,<span class="dv">1</span>], <span class="at">each=</span>periods)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>r2 <span class="ot">=</span> <span class="fu">rep</span>(r[,<span class="dv">2</span>], <span class="at">each=</span>periods)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co"># correlated error terms at the individual-time level</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>e <span class="ot">=</span> <span class="fu">mvrnorm</span>(N<span class="sc">*</span>periods, <span class="at">mu=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">Sigma=</span><span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">1</span>,tau,tau,<span class="dv">1</span>), <span class="at">nrow=</span><span class="dv">2</span>))</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>e1 <span class="ot">=</span> e[,<span class="dv">1</span>]</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>e2 <span class="ot">=</span> e[,<span class="dv">2</span>]</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co"># selection</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>z <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="dv">1</span><span class="sc">+</span>x<span class="sc">+</span>w<span class="sc">+</span>r1<span class="sc">+</span>e1<span class="sc">&gt;</span><span class="dv">0</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co"># outcome</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>y <span class="ot">=</span> <span class="fu">rpois</span>(N<span class="sc">*</span>periods, <span class="fu">exp</span>(<span class="sc">-</span><span class="dv">1</span><span class="sc">+</span>x<span class="sc">+</span>r2<span class="sc">+</span>e2))</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>y[z<span class="sc">==</span><span class="dv">0</span>] <span class="ot">=</span> <span class="cn">NA</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>sim <span class="ot">=</span> <span class="fu">data.frame</span>(id,time,x,w,z,y)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(sim)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   id time          x           w z  y</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1  1    1 -0.6264538 -0.88614959 0 NA</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2  1    2  0.1836433 -1.92225490 0 NA</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3  1    3 -0.8356286  1.61970074 1  0</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4  1    4  1.5952808  0.51926990 1  0</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5  1    5  0.3295078 -0.05584993 1  0</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6  1    6 -0.8204684  0.69641761 1  0</span></span></code></pre></div>
+<p>Next, we estimate the true parameters in the above DGP using various
+models. In particular, we examine whether we can recover the true value
+of x’s coefficient in the second stage.</p>
+<div id="poissonre" class="section level3">
+<h3>3.1. PoissonRE</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">=</span> <span class="fu">PoissonRE</span>(y<span class="sc">~</span>x, <span class="at">data=</span>sim[<span class="sc">!</span><span class="fu">is.na</span>(sim<span class="sc">$</span>y), ], <span class="at">id.name=</span><span class="st">&#39;id&#39;</span>, <span class="at">verbose=</span><span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(m1<span class="sc">$</span>estimates, <span class="at">digits=</span><span class="dv">3</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             estimate    se      z p    lci    uci</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)   -0.498 0.091 -5.496 0 -0.675 -0.320</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.887 0.024 36.800 0  0.840  0.934</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; sigma          1.125 0.066 17.065 0  1.003  1.262</span></span></code></pre></div>
+<p>The estimate of x is biased because the above model fails to consider
+the individual-time level fixed effects and the sample selection issue
+in the true DGP.</p>
+</div>
+<div id="pln_re" class="section level3">
+<h3>3.2. PLN_RE</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>m2 <span class="ot">=</span> <span class="fu">PLN_RE</span>(y<span class="sc">~</span>x, <span class="at">data=</span>sim[<span class="sc">!</span><span class="fu">is.na</span>(sim<span class="sc">$</span>y), ], <span class="at">id.name=</span><span class="st">&#39;id&#39;</span>, <span class="at">verbose=</span><span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(m2<span class="sc">$</span>estimates, <span class="at">digits=</span><span class="dv">3</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             estimate    se      z p    lci    uci</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)   -0.921 0.100 -9.204 0 -1.117 -0.725</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.932 0.052 17.964 0  0.830  1.034</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; sigma          1.056 0.078 13.519 0  0.914  1.221</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; gamma          0.951 0.048 19.721 0  0.861  1.050</span></span></code></pre></div>
+<p>The estimate of x is still biased because the above model fails to
+consider the sample selection issue in the true DGP.</p>
+</div>
+<div id="probitre" class="section level3">
+<h3>3.3. ProbitRE</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>m3 <span class="ot">=</span> <span class="fu">ProbitRE</span>(z<span class="sc">~</span>x<span class="sc">+</span>w, <span class="at">data=</span>sim, <span class="at">id.name=</span><span class="st">&#39;id&#39;</span>, <span class="at">verbose=</span><span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(m3<span class="sc">$</span>estimates, <span class="at">digits=</span><span class="dv">3</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             estimate    se      z p   lci   uci</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)    0.985 0.086 11.401 0 0.816 1.154</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.991 0.058 17.013 0 0.877 1.105</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; w              1.041 0.060 17.220 0 0.923 1.160</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; delta          0.937 0.084 11.130 0 0.786 1.117</span></span></code></pre></div>
+<p>The specification of this model is consistent with the DGP of the
+first stage. Therefore, it can produce consistent estimates of the
+parameters in the first stage.</p>
+</div>
+<div id="probitre_poissonre-1" class="section level3">
+<h3>3.4. ProbitRE_PoissonRE</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>m4 <span class="ot">=</span> <span class="fu">ProbitRE_PoissonRE</span>(z<span class="sc">~</span>x<span class="sc">+</span>w, y<span class="sc">~</span>x, <span class="at">data=</span>sim, <span class="at">id.name=</span><span class="st">&#39;id&#39;</span>, <span class="at">verbose=</span><span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(m4<span class="sc">$</span>estimates, <span class="at">digits=</span><span class="dv">3</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             estimate    se       z     p    lci    uci</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)    0.962 0.090  10.683 0.000  0.786  1.139</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.994 0.060  16.683 0.000  0.877  1.110</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; w              1.042 0.062  16.896 0.000  0.921  1.163</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)   -0.542 0.041 -13.185 0.000 -0.623 -0.462</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.884 0.010  92.126 0.000  0.865  0.903</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; delta          0.923 0.080  11.511 0.000  0.778  1.094</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; sigma          0.741 0.015  48.099 0.000  0.711  0.771</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rho            0.213 0.071   2.993 0.003  0.070  0.347</span></span></code></pre></div>
+<p>The results above the second “(Intercept)” are for the first stage.
+After accounting for self-selection at the individual level, the
+estimate of x in the second stage is still biased because the true DGP
+also includes self-selection at the individual-time level.</p>
+</div>
+<div id="probitre_plnre-1" class="section level3">
+<h3>3.5. ProbitRE_PLNRE</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># The estimation may take up to 1 minute</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>m5 <span class="ot">=</span> <span class="fu">ProbitRE_PLNRE</span>(z<span class="sc">~</span>x<span class="sc">+</span>w, y<span class="sc">~</span>x, <span class="at">data=</span>sim, <span class="at">id.name=</span><span class="st">&#39;id&#39;</span>, <span class="at">verbose=</span><span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(m5<span class="sc">$</span>estimates, <span class="at">digits=</span><span class="dv">3</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             estimate    se      z p    lci    uci</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)    1.013 0.092 10.986 0  0.832  1.193</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              0.995 0.058 17.111 0  0.881  1.109</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; w              1.049 0.061 17.240 0  0.930  1.169</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; (Intercept)   -1.021 0.116 -8.776 0 -1.249 -0.793</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; x              1.028 0.043 23.678 0  0.943  1.113</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; delta          0.947 0.083 11.458 0  0.798  1.123</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; sigma          1.170 0.055 21.271 0  1.067  1.283</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; gamma          0.995 0.037 26.556 0  0.924  1.071</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rho            0.338 0.094  3.609 0  0.144  0.507</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; tau            0.598 0.139  4.318 0  0.261  0.805</span></span></code></pre></div>
+<p>The results above the second “(Intercept)” are for the first stage.
+The specification of this model is consistent with the true DGP and
+hence the estimate of x is very close to its true value 1.</p>
+<p>The estimation of ProbitRE_PoissonRE and ProbitRE_PLNRE does not
+require a variable like w that exclusively influences the first-stage
+outcome, but the identification is stronger with such a variable.</p>
+</div>
+</div>
+<div id="citations" class="section level2">
+<h2>Citations</h2>
+<p>Peng, J., &amp; Van den Bulte, C. (2022). Participation
+vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity
+Conundrum. Available at SSRN: <a href="https://www.ssrn.com/abstract=2702053" class="uri">https://www.ssrn.com/abstract=2702053</a></p>
+<p>Peng, J., &amp; Van Den Bulte, C. (2015). How to Better Target and
+Incent Paid Endorsers in Social Advertising Campaigns: A Field
+Experiment. <em>2015 International Conference on Information
+Systems</em>. <a href="https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/" class="uri">https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/</a></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

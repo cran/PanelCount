@@ -1,4 +1,4 @@
-LL_CRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=1){
+LL_ProbitRE_PoissonRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=1){
     par = transformToBounded(par, c(delta='exp', sigma='exp', rho='correlation'))
     alpha = par[1:ncol(w)]
     beta = par[ncol(w)+1:ncol(x)]
@@ -52,7 +52,7 @@ LL_CRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=1){
 
 
 # 2. Gradient function
-Gradient_CRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,variance=FALSE,verbose=1){
+Gradient_ProbitRE_PoissonRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,variance=FALSE,verbose=1){
     par = transformToBounded(par, c(delta='exp', sigma='exp', rho='correlation'))
     alpha = par[1:ncol(w)]
     beta = par[ncol(w)+1:ncol(x)]
@@ -155,7 +155,7 @@ Gradient_CRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,varia
 }
 
 # 3. Partial Effects on the fit sample
-Partial_CRE = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
+Partial_ProbitRE_PoissonRE = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
     wnames = colnames(w)
     par = res$estimates[, 1] # delta, sigma, etc. already transformed
 
@@ -217,8 +217,8 @@ Partial_CRE = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
 }
 
 
-#' Predictions of CRE model on new sample
-#' @description Predictions of CRE model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
+#' Predictions of ProbitRE_PoissonRE model on new sample
+#' @description Predictions of ProbitRE_PoissonRE model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
 #' @param par Model estimates
 #' @param sel_form Formula for selection equation, a Probit model with random effects
 #' @param out_form Formula for outcome equation, a Poisson Lognormal model with random effects
@@ -340,9 +340,9 @@ predict_ProbitRE_PoissonRE = function(par,sel_form,out_form,data,offset_w_name=N
 #' @export
 #' @family PanelCount
 #' @references
-#' 1. Peng, J., & Van den Bulte, C. (2022). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Available at SSRN: https://ssrn.com/abstract=2702053
+#' 1. Peng, J., & Van den Bulte, C. (2023). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Management Science (forthcoming). Available at SSRN: <https://www.ssrn.com/abstract=2702053>
 #'
-#' 2. Peng, J., & Van Den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24
+#' 2. Peng, J., & Van den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. <https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/>
 ProbitRE_PoissonRE = function(sel_form, out_form, data, id.name, testData=NULL, par=NULL, delta=NULL, sigma=NULL, rho=NULL, method='BFGS', se_type=c('BHHH', 'Hessian')[1], H=c(10,10), psnH=20, prbH=20, reltol=sqrt(.Machine$double.eps), verbose=1, offset_w_name=NULL, offset_x_name=NULL){
     # 1.1 Sort data based on id
     data = data[order(data[, id.name]), ]
@@ -395,12 +395,12 @@ ProbitRE_PoissonRE = function(sel_form, out_form, data, id.name, testData=NULL, 
     # 2. Estimation
     resetIter()
     updateMethod(method)
-    res = optim(par=par, fn=LL_CRE, gr=Gradient_CRE, method=method, hessian=(se_type=='Hessian'), control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
+    res = optim(par=par, fn=LL_ProbitRE_PoissonRE, gr=Gradient_ProbitRE_PoissonRE, method=method, hessian=(se_type=='Hessian'), control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
 
     # 3. Likelihood, standard error, and p values
     res$n_obs = length(z)
-    gvar = Gradient_CRE(res$par,y,z,x,w,group,rule,offset_w=offset_w,offset_x=offset_x,variance=TRUE,verbose=verbose-1)
-    res = summary.panel.count(res, gvar, se_type=se_type, trans_vars=c(sigma='sigma', delta='delta', rho='rho'), trans_types=c('exp', 'exp', 'correlation'))
+    gvar = Gradient_ProbitRE_PoissonRE(res$par,y,z,x,w,group,rule,offset_w=offset_w,offset_x=offset_x,variance=TRUE,verbose=verbose-1)
+    res = compileResults(res, gvar, se_type=se_type, trans_vars=c(sigma='sigma', delta='delta', rho='rho'), trans_types=c('exp', 'exp', 'correlation'))
 
     # 4.1 making predictions on new data
     if(!is.null(testData)) data = testData
@@ -409,11 +409,11 @@ ProbitRE_PoissonRE = function(sel_form, out_form, data, id.name, testData=NULL, 
     res$predict_no_cor = predict_ProbitRE_PoissonRE(par_no_cor,sel_form,out_form,data,offset_w_name=offset_w_name,offset_x_name=offset_x_name)
 
     # 4.2 Partial Effects on the fit sample
-    res$partial = Partial_CRE(res,w,colnames(x),offset_w=offset_w)
+    res$partial = Partial_ProbitRE_PoissonRE(res,w,colnames(x),offset_w=offset_w)
     wavg = t(colMeans(w)) # convert vector to matrix with a single row (names kept)
     avg_offset_w = NULL
     if(!is.null(offset_w)) avg_offset_w = mean(offset_w)
-    res$partialAvgObs = Partial_CRE(res,wavg,colnames(x),offset_w=avg_offset_w)
+    res$partialAvgObs = Partial_ProbitRE_PoissonRE(res,wavg,colnames(x),offset_w=avg_offset_w)
 
 
     # 5. Meta data
@@ -426,7 +426,7 @@ ProbitRE_PoissonRE = function(sel_form, out_form, data, id.name, testData=NULL, 
     res$LR_p = 1 - pchisq(res$LR_stat, 1)
 
     if(verbose>=0){
-        cat(sprintf('==== CRE Model converged after %d iterations, LL=%.2f, gtHg=%.6f ****\n', res$counts[1], res$LL, res$gtHg))
+        cat(sprintf('==== ProbitRE_PoissonRE Model converged after %d iterations, LL=%.2f, gtHg=%.6f ****\n', res$counts[1], res$LL, res$gtHg))
         cat(sprintf('LR test of rho=0, chi2(1)=%.3f, p-value=%.4f\n', res$LR_stat, res$LR_p))
         print(res$estimates, digits=3)
         print(res$time <- Sys.time() - panel.count.env$begin)

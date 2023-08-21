@@ -2,7 +2,7 @@
 % Please edit documentation in R/ProbitRE_PoissonRE.R
 \name{predict_ProbitRE_PoissonRE}
 \alias{predict_ProbitRE_PoissonRE}
-\title{Predictions of CRE model on new sample}
+\title{Predictions of ProbitRE_PoissonRE model on new sample}
 \usage{
 predict_ProbitRE_PoissonRE(
   par,
@@ -35,5 +35,5 @@ A list with three sets of predictions
 }
 }
 \description{
-Predictions of CRE model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
+Predictions of ProbitRE_PoissonRE model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
 }

@@ -231,9 +231,9 @@ Gradient_PoissonRE_AGQ = function(par,y,x,group,H,variance=FALSE,verbose=1){
 #' @export
 #' @family PanelCount
 #' @references
-#' 1. Peng, J., & Van den Bulte, C. (2022). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Available at SSRN: https://ssrn.com/abstract=2702053
+#' 1. Peng, J., & Van den Bulte, C. (2023). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Management Science (forthcoming). Available at SSRN: <https://www.ssrn.com/abstract=2702053>
 #'
-#' 2. Peng, J., & Van Den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24
+#' 2. Peng, J., & Van den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. <https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/>
 PoissonRE = function(formula, data, id.name, par=NULL, sigma=NULL, method='BFGS', stopUpdate=FALSE, se_type=c('Hessian', 'BHHH')[1], H=20, reltol=sqrt(.Machine$double.eps), verbose=0){
     # 1.1 Sort data based on id
     data = data[order(data[, id.name]), ]
@@ -269,7 +269,7 @@ PoissonRE = function(formula, data, id.name, par=NULL, sigma=NULL, method='BFGS'
     # 3. Likelihood, standard error, and p values
     res$n_obs = length(y)
     gvar = Gradient_PoissonRE_AGQ(res$par,y,x,group,H,variance=TRUE,verbose=verbose-1)
-    res = summary.panel.count(res, gvar, se_type, trans_vars=c(sigma='sigma'), trans_types=c('exp'))
+    res = compileResults(res, gvar, se_type, trans_vars=c(sigma='sigma'), trans_types=c('exp'))
 
     res$mu = panel.count.env$mu
     res$scale = panel.count.env$scale

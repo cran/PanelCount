@@ -161,8 +161,8 @@ transformToBounded = function(par, trans_dict){
     par
 }
 
-# summary results
-summary.panel.count = function(res, gvar, se_type=c('BHHH', 'Hessian')[1], trans_vars=NULL, trans_types=NULL){
+# summarize results
+compileResults = function(res, gvar, se_type=c('BHHH', 'Hessian')[1], trans_vars=NULL, trans_types=NULL){
     if(length(trans_vars)!=length(trans_types))
         stop('Numbers of transformation variables and types are inconsistent')
 

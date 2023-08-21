@@ -1,4 +1,4 @@
-LL_CRE_SS = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=1){
+LL_ProbitRE_PLNRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=1){
     par = transformToBounded(par, c(delta='exp', sigma='exp', gamma='exp', rho='correlation', tau='correlation'))
     alpha = par[1:ncol(w)]
     beta = par[ncol(w)+1:ncol(x)]
@@ -59,7 +59,7 @@ LL_CRE_SS = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,verbose=
 
 
 # 2. Gradient function
-Gradient_CRE_SS = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,variance=FALSE,verbose=1){
+Gradient_ProbitRE_PLNRE = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,variance=FALSE,verbose=1){
     par = transformToBounded(par, c(delta='exp', sigma='exp', gamma='exp', rho='correlation', tau='correlation'))
     alpha = par[1:ncol(w)]
     beta = par[ncol(w)+1:ncol(x)]
@@ -166,7 +166,7 @@ Gradient_CRE_SS = function(par,y,z,x,w,group,rule,offset_w=NULL,offset_x=NULL,va
 }
 
 # 3. Partial Effects on the fit sample
-Partial_CRE_SS = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
+Partial_ProbitRE_PLNRE = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
     wnames = colnames(w)
     par = res$estimates[, 1] # sigma, gamma, etc. already transformed
 
@@ -230,8 +230,8 @@ Partial_CRE_SS = function(res,w,xnames,offset_w=NULL,intercept=FALSE){
 }
 
 
-#' Predictions of CRE_SS model on new sample
-#' @description Predictions of CRE_SS model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
+#' Predictions of ProbitRE_PLNRE model on new sample
+#' @description Predictions of ProbitRE_PLNRE model on new sample. Please make sure the factor variables in the test data do not have levels not shown in the training data.
 #' @param par Model estimates
 #' @param sel_form Formula for selection equation, a Probit model with random effects
 #' @param out_form Formula for outcome equation, a Poisson Lognormal model with random effects
@@ -363,9 +363,9 @@ predict_ProbitRE_PLNRE = function(par,sel_form,out_form,data,offset_w_name=NULL,
 #' @export
 #' @family PanelCount
 #' @references
-#' 1. Peng, J., & Van den Bulte, C. (2022). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Available at SSRN: https://ssrn.com/abstract=2702053
+#' 1. Peng, J., & Van den Bulte, C. (2023). Participation vs. Effectiveness in Sponsored Tweet Campaigns: A Quality-Quantity Conundrum. Management Science (forthcoming). Available at SSRN: <https://www.ssrn.com/abstract=2702053>
 #'
-#' 2. Peng, J., & Van Den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24
+#' 2. Peng, J., & Van den Bulte, C. (2015). How to Better Target and Incent Paid Endorsers in Social Advertising Campaigns: A Field Experiment. 2015 International Conference on Information Systems. <https://aisel.aisnet.org/icis2015/proceedings/SocialMedia/24/>
 ProbitRE_PLNRE = function(sel_form, out_form, data, id.name, testData=NULL, par=NULL, disable_rho=FALSE, disable_tau=FALSE, delta=NULL, sigma=NULL, gamma=NULL, rho=NULL, tau=NULL, method='BFGS', se_type=c('BHHH', 'Hessian')[1], H=c(10,10), psnH=20, prbH=20, plnreH=20, reltol=sqrt(.Machine$double.eps), factr=1e7, verbose=1, offset_w_name=NULL, offset_x_name=NULL){
     # 1.1 Sort data based on id
     data = data[order(data[, id.name]), ]
@@ -440,18 +440,18 @@ ProbitRE_PLNRE = function(sel_form, out_form, data, id.name, testData=NULL, par=
         lb[names(lb) %in% c('delta', 'sigma', 'gamma')] = 0
         lb[names(lb) %in% c('rho', 'tau')] = -1
         ub[names(ub) %in% c('rho', 'tau')] = 1
-        res = optim(par=par, fn=LL_CRE_SS, gr=Gradient_CRE_SS, method=method, hessian=(se_type=='Hessian'), control=list(factr=factr,fnscale=-1), lower=lb, upper=ub, y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
+        res = optim(par=par, fn=LL_ProbitRE_PLNRE, gr=Gradient_ProbitRE_PLNRE, method=method, hessian=(se_type=='Hessian'), control=list(factr=factr,fnscale=-1), lower=lb, upper=ub, y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
     } else {
         # transform to unbounded parameters
         par = transformToUnbounded(par, c(delta='exp', sigma='exp', gamma='exp', rho='correlation', tau='correlation'))
-        res = optim(par=par, fn=LL_CRE_SS, gr=Gradient_CRE_SS, method=method, hessian=(se_type=='Hessian'), control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
+        res = optim(par=par, fn=LL_ProbitRE_PLNRE, gr=Gradient_ProbitRE_PLNRE, method=method, hessian=(se_type=='Hessian'), control=list(reltol=reltol,fnscale=-1), y=y, z=z, x=x, w=w, group=group, rule=rule, offset_w=offset_w, offset_x=offset_x, verbose=verbose)
     }
 
 
     # 3. Likelihood, standard error, and p values
     res$n_obs = length(z)
-    gvar = Gradient_CRE_SS(res$par,y,z,x,w,group,rule,offset_w=offset_w,offset_x=offset_x,variance=TRUE,verbose=verbose-1)
-    res = summary.panel.count(res, gvar, se_type, trans_vars=c(delta='delta', sigma='sigma', gamma='gamma', rho='rho', tau='tau'), trans_types=c('exp', 'exp', 'exp', 'correlation', 'correlation'))
+    gvar = Gradient_ProbitRE_PLNRE(res$par,y,z,x,w,group,rule,offset_w=offset_w,offset_x=offset_x,variance=TRUE,verbose=verbose-1)
+    res = compileResults(res, gvar, se_type, trans_vars=c(delta='delta', sigma='sigma', gamma='gamma', rho='rho', tau='tau'), trans_types=c('exp', 'exp', 'exp', 'correlation', 'correlation'))
 
 
     # 4.1 Making predictions on new data
@@ -461,11 +461,11 @@ ProbitRE_PLNRE = function(sel_form, out_form, data, id.name, testData=NULL, par=
     res$predict_no_cor = predict_ProbitRE_PLNRE(par_no_cor,sel_form,out_form,data,offset_w_name=offset_w_name,offset_x_name=offset_x_name)
 
     # 4.2 Partial Effects on the fit sample
-    res$partial = Partial_CRE_SS(res,w,colnames(x),offset_w=offset_w)
+    res$partial = Partial_ProbitRE_PLNRE(res,w,colnames(x),offset_w=offset_w)
     wavg = t(colMeans(w)) # convert vector to matrix with a single row (names kept)
     avg_offset_w = NULL
     if(!is.null(offset_w)) avg_offset_w = mean(offset_w)
-    res$partialAvgObs = Partial_CRE_SS(res,wavg,colnames(x),offset_w=avg_offset_w)
+    res$partialAvgObs = Partial_ProbitRE_PLNRE(res,wavg,colnames(x),offset_w=avg_offset_w)
 
     # 5. Meta data
     res$input = list(sel_form=sel_form, out_form=out_form, par=par, disable_rho=disable_rho, disable_tau=disable_tau, delta=delta, sigma=sigma, gamma=gamma,rho=rho, tau=tau, method=method,se_type=se_type, H=H,psnH=psnH,prbH=prbH,plnreH=plnreH,reltol=reltol,verbose=verbose,offset_w_name=offset_w_name, offset_x_name=offset_x_name)
@@ -477,7 +477,7 @@ ProbitRE_PLNRE = function(sel_form, out_form, data, id.name, testData=NULL, par=
     res$LR_p = 1 - pchisq(res$LR_stat, 2)
 
     if(verbose>=0){
-        cat(sprintf('==== CRE_SS Model converged after %d iterations, LL=%.2f, gtHg=%.6f ****\n', res$counts[1], res$LL, res$gtHg))
+        cat(sprintf('==== ProbitRE_PLNRE Model converged after %d iterations, LL=%.2f, gtHg=%.6f ****\n', res$counts[1], res$LL, res$gtHg))
         cat(sprintf('LR test of rho=0 & tau=0, chi2(2)=%.3f, p-value=%.4f\n', res$LR_stat, res$LR_p))
         print(res$estimates, digits=3)
         print(res$time <- Sys.time() - panel.count.env$begin)
